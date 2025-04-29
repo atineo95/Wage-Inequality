@@ -40,16 +40,26 @@ Wage inequality is a growing issue across and within U.S. states. This project e
 ## Regression Analysis
 
 ### Research question
-> We have seen that among the highest states with an annual mean wage, there seems to also be a high disparity between mean and median wages. Policies tend to focus on always trying to improve the average wage per state, but does that equal to a good growth for the state? Or does this create further inequality? we set to use the difference between mean and median as our dependent variable to see if increase in annual mean lead to growth in our dependent variable.
+We have seen that among the highest states with an annual mean wage, there seems to also be a high disparity between mean and median wages. Policies tend to focus on always trying to improve the average wage per state, but does that equal to a good growth for the state? Or does this create further inequality? 
+
+We set to use the difference between mean and median as our dependent variable to see if increase in annual mean lead to growth in our dependent variable.
 
 ### Regression Results
-> Our initial result emphasized that there is truly a relationship and that we can confidently reject the hypothesis that an increase in annual mean wage does not increase the gap between mean and median wage.
-> 
-> However, our model did not fully met the assumptions of regression. While there was a linear relationship, there was some mild heteroskedasiticy with greater variance for certain data points.
-> 
-> Additionally, while there was a slight skew at the tails, we can assume that there is normality. That being said, we will remove points that have been highlighted to distort the model and re run to see if our results still hold true
->
-> After removing California, New York, and DC, and re running our simple linear model, our relationship was still statistically significant at the 99% confidence level. Our results highlighted that a $1 increase in mean wage is associated with a **$0.34 increase in wage gap**
+Our initial result emphasized that there is truly a relationship and that we can confidently reject the hypothesis that an increase in annual mean wage does not increase the gap between mean and median wage.
+
+However, our model did not fully met the assumptions of regression. While there was a linear relationship, there was some mild heteroskedasiticy with greater variance for certain data points.
+
+Additionally, while there was a slight skew at the tails, we can assume that there is normality. That being said, we will remove points that have been highlighted to distort the model and re run to see if our results still hold true
+
+After removing California, New York, and DC, and re running our simple linear model, our relationship was still statistically significant at the 99% confidence level. Our results highlighted that a $1 increase in mean wage is associated with a **$0.34 increase in wage gap**
 
 
-##Conclusion and Recommendations 
+## Conclusion
+
+- States with high annual mean wages are associated with greater wage inequality
+- California, New York, and DC have a large proportion of positions with the highest annual mean wage, such as CEOs. While at the same time a high concentration of the lowest jobs with annual mean wage.
+- Aiming to improve annual mean wage will not result in greater standard of living for the majority of residents in the states. The focus should be on the lower end of the income distributions.
+
+## Recommendations
+- Work to raise minimum wages to minimize the gap between the annual mean wage and annual median wage
+- Expand social programs that aim to raise education and training access for individuals without access to education
