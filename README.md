@@ -16,3 +16,18 @@ Wage inequality is a growing issue across and within U.S. states. This project e
 
 ## Exploratory Data Analysis
 
+### Wage Differences Across States
+![Mean Wage by U S](https://github.com/user-attachments/assets/79fdc111-89df-48d5-8938-df159c355457)
+
+![Top and Bottom State](https://github.com/user-attachments/assets/b69c893a-26b3-4e80-aa21-db0681da145a)
+
+> The East and West Coasts show the highest mean wages, exceeding $20,000 more than central and sourthern states
+
+### Gap Between Mean and Median Wages
+![Mean minus Median](https://github.com/user-attachments/assets/80ed5695-45d3-4cde-a9fe-e06ed5ae8d33)
+> California, New York, and D.C. display the largest gaps, highlighting skewed income distributions
+
+### Employment in California, New York, and D.C.
+![Share of Employment in top and bottom 5 jobs](https://github.com/user-attachments/assets/d3db8ad1-17a8-4bee-9322-18cbdc1c0156)
+> CEOs, the second best paid position by annnual mean wage, are heavily concentrated in California, New York, and Washington D.C., with 37% of all U.S. CEOs located in just these three regions
+> Low wage positions also show high concentration in these states, highlighting the coexistence of income extremes
