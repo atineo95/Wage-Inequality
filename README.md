@@ -12,7 +12,7 @@ Wage inequality is a growing issue across and within U.S. states. This project e
 - **Cleaned data** — Handled missing values and converted variable types to numeric
 - **Performed exploratory data analysis (EDA)** — Compared wages across states, analyzed wage gaps, and reviewed occupational breakdowns
 - **Ran weighted simple linear regression** — Used `total_emp` to weight states by employment size, modeling wageGap ~ a_mean
-- **Validated model assumptions and removed influential states** — Evaluated regression assumptions (linearity, independence, normality, Homoscedasticity), then removed high-leverage states (D.C., NY, CA) to test model robustness.
+- **Validated model assumptions and removed influential states** — Evaluated regression assumptions (linearity, independence, normality, Homoscedasticity), then removed high-leverage states (D.C., NY, CA) to test model robustness
 
 ## Exploratory Data Analysis
 
