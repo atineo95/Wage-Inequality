@@ -29,5 +29,4 @@ Wage inequality is a growing issue across and within U.S. states. This project e
 
 ### Employment in California, New York, and D.C.
 ![Share of Employment in top and bottom 5 jobs](https://github.com/user-attachments/assets/d3db8ad1-17a8-4bee-9322-18cbdc1c0156)
-> CEOs, the second best paid position by annnual mean wage, are heavily concentrated in California, New York, and Washington D.C., with 37% of all U.S. CEOs located in just these three regions
-> Low wage positions also show high concentration in these states, highlighting the coexistence of income extremes
+
