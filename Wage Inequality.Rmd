@@ -1,0 +1,565 @@
+---
+title: "Wage Inequality Analysis"
+output: word_document
+date: "2025-04-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+filepath1 <- "C:/Users/tineo/OneDrive/Desktop/R/oesm23st/state_M2023_dl.xlsx"
+wagesRaw <- readxl::read_excel(filepath1) %>% 
+  clean_names()
+
+filepath2 <- "C:/Users/tineo/OneDrive/Desktop/R/oesm23nat/national_M2023_dl.xlsx"
+wagesNationalRaw <- readxl::read_excel(filepath2) %>% 
+  clean_names()
+```
+
+#data cleaning
+```{r}
+#count how many missing values are there
+wagesRaw %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(cols = everything(),
+               names_to = "variable",
+               values_to = "missing_count") %>%
+  arrange(desc(missing_count))
+
+
+#turn mean and median into numeric from character and remove NAs for these two metrics
+wagesCleaned <- wagesRaw %>%
+  mutate(a_mean = as.numeric(a_mean), a_median = as.numeric(a_median)) %>%
+  mutate(tot_emp = as.numeric(gsub(",", "", tot_emp))) %>%
+  filter(!is.na(a_mean), !is.na(a_median), 
+    !area_title %in% c('Guam', 'Puerto Rico', 'Virgin Islands'))
+
+#when we need to only look at just state vs state
+allOccupations <- wagesCleaned %>%
+  filter(occ_title == 'All Occupations')
+
+```
+
+
+#Map of USA with average wage for each state
+```{r}
+
+allOccupations <- allOccupations %>%
+  rename(state = area_title)
+
+allOccupations <- allOccupations %>%
+  filter(!state == 'District of Columbia')
+
+#US Map that plots the average weight for all states
+plot_usmap(data = allOccupations, values = "a_mean", regions = "states") +
+  scale_fill_gradient2(
+    low = "white", mid = "#8db600", high = "darkgreen", midpoint = 65000,
+    name = "Annual Mean Wage (USD)",
+    labels = dollar_format()
+  ) +
+  labs(
+    title = "Annual Mean Wage by U.S. State (excluding D.C.)",
+    subtitle = "Source: Bureau of Labor Statistics, May 2023"
+  ) +
+  theme(
+    legend.position = "right",
+    legend.title = element_text(size = 8),
+    panel.grid = element_blank(),
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 8),
+    plot.caption = element_text(size = 8)
+  )
+
+
+```
+
+
+#top 5 and bottom 5 states by salary
+```{r}
+getTopAndBottomStatesData <- function(data, n = 5) {
+  rankedStates <- data %>%
+    arrange(desc(a_mean))
+
+  topStates <- head(rankedStates$area_title, n)
+  bottomStates <- tail(rankedStates$area_title, n)
+
+  selectedStates <- c(topStates, bottomStates)
+
+  # Now filter the full data to keep all rows for these states
+  filteredData <- data %>%
+    filter(area_title %in% selectedStates)
+}
+
+wagesTopAndBottom <- getTopAndBottomStatesData(allOccupations, n = 5)
+
+wagesTopAndBottom <- wagesTopAndBottom %>%
+  mutate(group = ifelse(area_title %in% c("Massachusetts", "District of Columbia", 
+                                     "New York", "Washington", "New Jersey", "California"),
+                        "Top 5", "Bottom 5"))
+
+#boxplot of the distribution of wages per state 
+ggplot(wagesTopAndBottom, aes(x = reorder(area_title, a_mean), y = a_mean, fill = group)) +
+  geom_col(width = 0.8) +
+  geom_text(aes(label = paste0(dollar(a_mean))), 
+            hjust = 1.1, color = "white", size = 3) +
+  coord_flip() +
+  scale_y_continuous(
+    labels = dollar, 
+    limits = c(0, 110000)
+  ) +
+  scale_fill_manual(
+    values = c("Top 5" = "darkgreen", "Bottom 5" = "#8db600")
+  ) +
+  labs(
+    title = "Top 5 and Bottom 5 States by Annual Mean Wage",
+    subtitle = "Source: Bureau of Labor Statistics, May 2023",
+    x = "State",
+    y = "Annual Mean Wage (USD)",
+    fill = NULL
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(size = 8),
+    axis.title.x = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    legend.position = "none" 
+  )
+
+```
+
+
+#Common or Rare Jobs
+```{r}
+#most common or rarest jobs across the dataset
+getCommonOrRareJobs <- function(dataset, top = TRUE, n = 5) {
+  dataset %>%
+    filter(o_group == 'detailed', occ_title != "All Occupations") %>%
+    group_by(occ_title) %>%
+    summarise(totalEmp = sum(tot_emp, na.rm = TRUE)) %>%
+    {
+      if (top) {
+        arrange(., desc(totalEmp)) %>%
+          slice(1:n)
+      } else {
+        arrange(., totalEmp) %>%
+          slice(1:n)
+      }
+    }
+}
+
+commonJobs <- getCommonOrRareJobs(wagesCleaned, top = TRUE, n = 5)
+rareJobs <- getCommonOrRareJobs(wagesCleaned, top = FALSE, n = 5)
+
+rareJobs <- rareJobs %>%
+  mutate(group = "Bottom 5")
+commonJobs <- commonJobs %>%
+  mutate(group = "Top 5")
+commonRareJobs <- bind_rows(commonJobs, rareJobs)
+
+
+group_labels <- c(
+  "Top 5" = "Most Common Jobs",
+  "Bottom 5" = "Least Common Jobs"
+)
+
+commonJobs$occ_title <- str_wrap(commonJobs$occ_title, width = 25)
+rareJobs$occ_title <- str_wrap(rareJobs$occ_title, width = 25)
+
+
+#Barplot of common and rare jobs
+topPlot <- ggplot(commonJobs, aes(x = reorder(occ_title, totalEmp), y = totalEmp)) +
+  geom_col(fill = "darkgreen", width = .8) +
+  geom_text(aes(label = comma(totalEmp)), 
+            hjust = 1.1, color = "white", size = 3) +
+  coord_flip() +
+  labs(
+    title = "Top 5 Most Common Occupations in the U.S.",
+    x = "Occupation",
+    y = "Total Employment"
+  ) +
+  scale_y_continuous(labels = scales::comma_format(), limits = c(0, 5000000)) +
+  theme_minimal(base_size = 10) +
+  theme(
+    plot.title = element_text(hjust = 0, face = "bold", size = 11),
+    axis.title.x = element_text(size = 8),
+    axis.title.y = element_text(size = 8)
+  )
+
+bottomPlot <- ggplot(rareJobs, aes(x = reorder(occ_title, totalEmp), y = totalEmp)) +
+  geom_col(fill = "#8db600", width = .8) +
+  geom_text(aes(label = comma(totalEmp)), 
+            hjust = 1.1, color = "white", size = 3) +
+  coord_flip() +
+  labs(
+    title = "Top 5 Most Rare Occupations in the U.S.",
+    x = "Occupation",
+    y = "Total Employment"
+  ) +
+  scale_y_continuous(labels = scales::comma_format(), limits = c(0, 300)) +
+  theme_minimal(base_size = 10) +
+  theme(
+    plot.title = element_text(hjust = 0, face = "bold", size = 11),
+    axis.title.x = element_text(size = 8),
+    axis.title.y = element_text(size = 8)
+  )
+
+(topPlot) / (bottomPlot) +
+  plot_annotation(
+    title = "Top and Bottom 5 Jobs by Total Employment",
+    subtitle = "Source: Bureau of Labor Statistics, May 2023"
+  ) & 
+    theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    legend.position = "none" 
+  )
+
+```
+
+
+#THIS IS USING NATIONAL 
+```{r}
+topPayingJobs <- wagesCleaned %>%
+  filter(!occ_title %in% c("All Occupations")) %>%
+  filter(!occ_code == '11-1011') %>% #CEO Duplicate
+  filter(!occ_code == '29-1151') %>% #nurse duplicate
+  arrange(desc(a_mean)) %>%
+  slice(1:5)
+
+WorstPayingJobs <- wagesCleaned %>%
+  filter(!occ_title %in% c("All Occupations")) %>%
+  filter(!occ_code == '35-3023') %>% #Fast food duplicate
+  filter(!occ_code == '39-3031') %>% #user
+  filter(!occ_code == '35-9031') %>% #Host
+  filter(!occ_code == '41-2010') %>% #Cashiers
+  arrange(a_mean) %>%
+  slice(1:5)
+
+topPayingJobs <- topPayingJobs %>%
+  mutate (wageLabel = dollar(a_mean))
+
+
+WorstPayingJobs <- WorstPayingJobs %>%
+  mutate (wageLabel = dollar(a_mean))
+
+
+#WorstPayingJobs$occ_title <- str_wrap(WorstPayingJobs$occ_title, width = 25)
+#topPayingJobs$occ_title <- str_wrap(topPayingJobs$occ_title, width = 25)
+
+#bar blot for paying jobs
+topPlot <- ggplot(topPayingJobs, aes(x = reorder(occ_title, a_mean), y = a_mean)) +
+  geom_col(fill = "darkgreen", width = .8) +
+geom_text(aes(label = wageLabel), 
+            hjust = 1.1, color = "white", size = 3.5) +
+  coord_flip() +
+  labs(
+    title = "Best 5 Paid Occupations on Average in the U.S.",
+    x = "Occupation",
+    y = "Average Wage"
+  ) +
+  scale_y_continuous(labels = scales::comma_format(), limits = c(0, 400000)) +
+  theme_minimal(base_size = 10)
+
+
+bottomPlot <- ggplot(WorstPayingJobs, aes(x = reorder(occ_title, a_mean), y = a_mean)) +
+  geom_col(fill = "#8db600", width = .8) + 
+  geom_text(aes(label = wageLabel), 
+            hjust = 1.1, color = "white", size = 3.5) +
+  coord_flip() +
+  labs(
+    title = "Worst 5 Paid Occupations on Average in the U.S.",
+    x = "Occupation",
+    y = "Average Wage"
+  ) +
+  scale_y_continuous(labels = scales::comma_format(), limits = c(0,100000)) +
+  theme_minimal(base_size = 10)
+
+(topPlot) / (bottomPlot) +
+  plot_annotation(
+    title = "Top and Bottom 5 Jobs by Annual Mean Wage",
+    subtitle = "Source: Bureau of Labor Statistics, May 2023"
+  ) & 
+    theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    legend.position = "none" 
+  )
+
+
+#will be used in the next segment 
+topPayingTitles <- topPayingJobs$occ_title %>% unique() %>% as.character()
+topPayingTitles <- stringr::str_trim(topPayingTitles)
+
+worstPayingTitles <- WorstPayingJobs$occ_title %>% unique() %>% as.character()
+worstPayingTitles <- stringr::str_trim(worstPayingTitles)
+
+```
+
+
+#See if best/worst paying jobs are proportionally over/under-represented in high/low-wage states
+```{r}
+calculateJobConcentration <- function(jobTitles, dataset, statesOfInterest, wrapWidth = 30) {
+  
+  dataset %>%
+    filter(o_group == "detailed", occ_title %in% jobTitles) %>%
+    {
+      selectedJobs <- .
+      
+      nationalJobTotals <- selectedJobs %>%
+        group_by(occ_title) %>%
+        summarise(nationalEmp = sum(tot_emp, na.rm = TRUE)) %>%
+        ungroup()
+      
+      StatesJobTotals <- selectedJobs %>%
+        filter(area_title %in% statesOfInterest) %>%
+        group_by(occ_title) %>%
+        summarise(StateEmp = sum(tot_emp, na.rm = TRUE)) %>%
+        ungroup()
+      
+      left_join(StatesJobTotals, nationalJobTotals, by = "occ_title") %>%
+        mutate(
+          percentInStates = round(100 * StateEmp / nationalEmp, 1),
+          occ_title = str_wrap(occ_title, width = wrapWidth)
+        )
+    }
+}
+
+
+topJobConcentration <- calculateJobConcentration(
+  jobTitles = topPayingTitles,
+  dataset = wagesCleaned,
+  statesOfInterest = c("District of Columbia", "California", "New York")
+)
+
+worstJobConcentration <- calculateJobConcentration(
+  jobTitles = worstPayingTitles,
+  dataset = wagesCleaned,
+  statesOfInterest = c("District of Columbia", "California", "New York")
+)
+
+worstJobConcentration$occ_title <- str_wrap(worstJobConcentration$occ_title, width = 30)
+
+topPlot <- ggplot(topJobConcentration, aes(x = reorder(occ_title, percentInStates), y = percentInStates)) +
+  geom_col(fill = "darkgreen", width = .8) +
+  geom_text(aes(label = paste0(round(percentInStates), "%")), 
+            hjust = 1.1, color = "white", size = 3) +
+  coord_flip() +
+  labs(
+    title = "High-Paying Jobs",
+    x = "Occupation",
+    y = "Percent of National Employment"
+  ) +
+  scale_y_continuous(
+    labels = function(x) paste0(round(x), "%"),
+    limits = c(0, max(topJobConcentration$percentInStates) + 5)
+  ) + theme_minimal(base_size = 10)
+
+bottomPlot <- ggplot(worstJobConcentration, aes(x = reorder(occ_title, percentInStates), 
+                                                y = percentInStates)) +
+  geom_col(fill = "#8db600", width = .8) +
+  geom_text(aes(label = paste0(round(percentInStates), "%")), 
+            hjust = 1.1, color = "white", size = 3) +
+  coord_flip() +
+  labs(
+    title = "Low-Paying Jobs",
+    x = "Occupation",
+    y = "Percent of National Employment"
+  ) +
+  scale_y_continuous(
+    labels = function(x) paste0(round(x), "%"),
+    limits = c(0, max(topJobConcentration$percentInStates) + 5)
+  ) + theme_minimal(base_size = 10)
+
+(topPlot) / (bottomPlot) +
+  plot_annotation(
+    title = "Share of U.S. Employment in Top and Bottom 5 Jobs in CA, NY, and DC",
+    subtitle = "Source: Bureau of Labor Statistics, May 2023"
+  ) & 
+    theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 8),
+    axis.title.x = element_text(size = 7),
+    axis.title.y = element_text(size = 6),
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 5),
+    legend.position = "none"  
+  )
+
+
+```
+
+
+#Difference between Mean and Median by State
+```{r}
+plotWageGapByState <- function(data, n = 5) {
+  # Step 1: Calculate mean-median gap for each state
+  meanMedianDiff <- data %>%
+    filter(occ_title == "All Occupations") %>%
+    mutate(meanMedianGap = a_mean - a_median) %>%
+    select(area_title, meanMedianGap)
+
+  # Step 2: Get top and bottom N states
+  topStates <- meanMedianDiff %>%
+    filter(!is.na(meanMedianGap)) %>%
+    slice_max(meanMedianGap, n = n) %>%
+    mutate(group = "Top")
+
+  bottomStates <- meanMedianDiff %>%
+    filter(!is.na(meanMedianGap)) %>%
+    slice_min(meanMedianGap, n = n) %>%
+    mutate(group = "Bottom")
+
+  wageGapStates <- bind_rows(topStates, bottomStates)
+
+  # Step 3: Plot
+  ggplot(wageGapStates, aes(x = reorder(area_title, meanMedianGap), y = meanMedianGap, 
+                            fill = group)) +
+    geom_col(width = 0.8) +
+    geom_text(aes(label = paste0(dollar(meanMedianGap))), 
+            hjust = 1.1, color = "white", size = 3) +
+    coord_flip() +
+    scale_fill_manual(
+      values = c("Top" = "darkgreen", "Bottom" = "#8db600"),
+      guide = "none"  # remove legend if you don't want it
+    ) +
+    scale_y_continuous(
+      labels = scales::dollar_format(),
+      limits = c(0, 25000)
+    ) +
+    labs(
+      title = "States with the Largest and Smallest Gaps Between Mean and Median Wages",
+      subtitle = "Source: Bureau of Labor Statistics, May 2023",
+      x = "State",
+      y = "Mean - Median Wage ($)"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(size = 8),
+    axis.title.x = element_text(size = 8),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8),
+    legend.position = "none" 
+    )
+}
+
+
+plotWageGapByState(wagesCleaned, n = 5)
+```
+
+
+
+#What is the occupation that is seen most across these states? 
+```{r}
+
+getTopOccupationsInStates <- function(dataset, statesOfInterest, topN = 5, wrapWidth = 30) {
+  
+  dataset %>%
+    filter(area_title %in% statesOfInterest, o_group == "major") %>%
+    group_by(occ_title) %>%
+    summarise(totalEmp = sum(tot_emp, na.rm = TRUE)) %>%
+    mutate(
+      percentOfStateEmployment = 100 * totalEmp / sum(totalEmp),
+      occ_title = str_wrap(occ_title, width = wrapWidth)
+    ) %>%
+    arrange(desc(percentOfStateEmployment)) %>%
+    slice(1:topN)
+}
+
+topJobsLowIncomeStates <- getTopOccupationsInStates(wagesCleaned,
+                                                    c("Arkansas", "West Virginia",  "Mississippi"))
+
+topJobsHighIncomeStates <- getTopOccupationsInStates(wagesCleaned,
+                                                    c("District of Columbia", "New York",  "California"))
+
+
+topPlot <- ggplot(topJobsHighIncomeStates, aes(x = reorder(occ_title, percentOfStateEmployment), y = percentOfStateEmployment)) +
+  geom_col(fill = "darkgreen", width = .8) +
+  geom_text(aes(label = paste0(round(percentOfStateEmployment), "%")), 
+            hjust = 1.1, color = "white", size = 3) +
+  coord_flip() +
+  labs(
+    title = "Occupation % in CA, NY, and DC",
+    x = "Occupation",
+    y = "Percent of State Employment"
+  ) +
+  scale_y_continuous(
+    labels = function(x) paste0(round(x), "%"),
+    limits = c(0, max(topJobsLowIncomeStates$percentOfStateEmployment) + 5)
+  ) +
+  theme_minimal(base_size = 11) 
+
+bottomPlot <- ggplot(topJobsLowIncomeStates, aes(x = reorder(occ_title, percentOfStateEmployment), y = percentOfStateEmployment)) +
+  geom_col(fill = "#8db600", width = .8) +
+  geom_text(aes(label = paste0(round(percentOfStateEmployment), "%")), 
+            hjust = 1.1, color = "white", size = 3) +
+  coord_flip() +
+  labs(
+    title = "Occupation % in AR, WV, and MS",
+    x = "Occupation",
+    y = "Percent of State Employment"
+  ) +
+  scale_y_continuous(
+    labels = function(x) paste0(round(x), "%"),
+    limits = c(0, max(topJobsLowIncomeStates$percentOfStateEmployment) + 5)
+  ) +
+  theme_minimal(base_size = 11) 
+
+(topPlot) / (bottomPlot) +
+  plot_annotation(
+    title = "Top Occupations by Employment Share in High and Low Income States",
+    subtitle = "Source: Bureau of Labor Statistics, May 2023"
+  ) & 
+    theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 8),
+    axis.title.x = element_text(size = 7),
+    axis.title.y = element_text(size = 6),
+    axis.text.x = element_text(size = 7),
+    axis.text.y = element_text(size = 5),
+    legend.position = "none" 
+  )
+
+
+```
+
+
+#Linear Regression - does an increase in average wage increase the wage inequality?
+```{r}
+
+#we are only interested in the annual wage per state so we will use the aggregate of all 
+#occupations. We will create a new column with mean - median as our dependent variable
+wageGapData <- wagesCleaned %>%
+  filter(occ_title == "All Occupations") %>%
+  mutate(
+    wageGap = a_mean - a_median
+  ) %>%
+  select(area_title, a_mean, a_median, wageGap, tot_emp)
+
+
+#initial linear regression 
+wageGapModel <- lm(wageGap ~ a_mean, data = wageGapData, weights = tot_emp)
+summary(wageGapModel)
+
+#Check for Regression assumptions
+par(mfrow = c(2,2))
+plot(wageGapModel2)
+
+#removing points that have high leverage in the models - validate findings
+wageGapDataClean <- wageGapData[-c(5, 9, 33), ]
+
+wageGapModel2 <- lm(formula = wageGap ~ a_mean, data = wageGapDataClean, weights = tot_emp)
+summary(wageGapModel2)
+
+```
