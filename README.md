@@ -53,7 +53,7 @@ However, our model did not fully met the assumptions of linear regression. While
 
 Additionally, while there was a slight skew in the tails of our QQ-plot, the assumption of normality meets. That being said, we removed the observations that have been identified as disproportionately influential and and re-ran our model to test for robustness.
 
-After removing California, New York, the relationship remained statistically significant at the 99% confidence level. A **$1 increase** in mean wage is associated with a **$0.34 increase in the wage gap**.
+After removing California, New York, and D.C. the relationship remained statistically significant at the 99% confidence level. A **$1 increase** in mean wage is associated with a **$0.34 increase in the wage gap**.
 
 
 ## Conclusion
